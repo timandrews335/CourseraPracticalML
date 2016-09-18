@@ -1,0 +1,112 @@
+---
+title: "Coursera Practical Machine Learning Final Project"
+author: "Tim Andrews"
+date: "September 18, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+This is my submission for the final project for Coursera's Practical Machine Learning.  The purpose of the project is to predict a classe variable for twenty supplied samples, using machine learning techniques.
+
+The R code below downloads supplied training and test data sets, and then runs a prediction based on a random forest model.  As there were over 19,000 observations in the supplied data set, due to PC limitations, I chose to work with just 1002 of them for training, and took another 331 to test my prediction for cross validation purposes.
+
+The results of the random forest produces an error rate of 5.79%.  Satisfied  with that, I then ran a prediction against the twenty supplied samples.
+
+```{r code}
+require(caret)
+require(ggplot2)
+
+set.seed(8675309)
+
+###Read in supplied training aned test sets
+training <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"), header=TRUE)
+testing <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"), header=TRUE)
+
+featurePlot(x=training[,c("num_window", "roll_belt", "pitch_belt")], y = training$classe, plot="pairs")
+
+###19K obervations are too many for my machine to handle, need to trim it down to 1333 (1002 train, 331 initial testing)
+newTraining <- training[sample(nrow(training), 1333),]
+inTrain <- createDataPartition(newTraining$classe, p = 3/4)[[1]]
+usableTraining <- newTraining[inTrain,]
+usableTesting <- newTraining[-inTrain,]
+
+##create a random forest fit
+fit <- train(classe ~ 
+             +num_window
+             +roll_belt
+             +pitch_belt
+             +yaw_belt
+             +total_accel_belt
+             +gyros_belt_x
+             +gyros_arm_x
+             +roll_dumbbell
+             +total_accel_dumbbell
+             +gyros_dumbbell_x
+             +gyros_forearm_x
+             +gyros_belt_y
+             +gyros_arm_y
+             +pitch_dumbbell
+             +gyros_belt_z
+             +gyros_arm_z
+             +yaw_dumbbell
+             +accel_belt_x
+             +accel_arm_x
+             +accel_belt_y
+             +accel_arm_y
+             +accel_belt_z
+             +accel_arm_z
+             +magnet_belt_x
+             +magnet_arm_x
+             +magnet_belt_y
+             +magnet_arm_y
+             +magnet_belt_z
+             +magnet_arm_z
+             +roll_arm
+             +pitch_arm
+             +yaw_arm
+             +total_accel_arm
+             +gyros_dumbbell_y
+             +gyros_forearm_y
+             +gyros_dumbbell_z
+             +gyros_forearm_z
+             +accel_dumbbell_x
+             +accel_forearm_x
+             +accel_dumbbell_y
+             +accel_forearm_y
+             +accel_dumbbell_z
+             +accel_forearm_z
+             +magnet_dumbbell_x
+             +magnet_forearm_x
+             +magnet_dumbbell_y
+             +magnet_forearm_y
+             +magnet_dumbbell_z
+             +magnet_forearm_z
+             +roll_forearm
+             +pitch_forearm
+             
+             , method="rf", prox=TRUE, data=usableTraining)
+
+###estimated error rate
+fit$finalModel
+#OOB estimate of  error rate: 5.79%
+
+###create a prediction
+usablePrediction <- predict(fit, newdata = usableTesting)
+
+###validate results with a confusion matrix
+confusionMatrix(usableTesting$classe, usablePrediction)
+#Accuracy : 0.9366          
+#95% CI : (0.9047, 0.9603)
+#No Information Rate : 0.287          
+#P-Value [Acc > NIR] : < 2.2e-16 
+
+
+###predict on final, supplied testing set
+finalPrediction <- predict(fit, newdata = testing)
+#print(finalPrediction)
+```
